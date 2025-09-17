@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Power Exchange Time Block Analysis</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      background: #f9fafb;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    h1 {
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #374151;
+    }
+    select, input[type="date"] {
+      width: 90%;
+      padding: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .multi-select {
+      position: relative;
+    }
+    .multi-select-display {
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      padding: 8px;
+      background: #fff;
+      cursor: pointer;
+      min-height: 40px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+    .tag {
+      background: #dbeafe;
+      color: #1e40af;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .tag button {
+      border: none;
+      background: none;
+      margin-left: 4px;
+      cursor: pointer;
+      color: #1e40af;
+      font-size: 13px;
+    }
+    .multi-select-options {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      display: none;
+      z-index: 10;
+      /* auto height so no scroll bar */
+    }
+    .multi-select-options label {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .multi-select-options label:hover {
+      background: #f9fafb;
+    }
+    .header-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 8px;
+      border: 1px solid #e5e7eb;
+      text-align: left;
+    }
+    th {
+      background: #f9fafb;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #6b7280;
+    }
+    tr:hover {
+      background: #f9fafb;
+    }
+    .table-footer {
+      background: #f9fafb;
+      padding: 10px 14px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pagination {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 220px; /* keeps Next fixed even if Previous is hidden */
+    }
+    .btn {
+      background: #2563eb;
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn:hover {
+      background: #1d4ed8;
+    }
+    .btn-success {
+      background: #059669;
+    }
+    .btn-success:hover {
+      background: #047857;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="card">
+      <div class="header-actions">
+        <h1>Power Exchange Data Analysis</h1>
+        <button class="btn btn-success" id="downloadBtn">📥 Download CSV</button>
+      </div>
+      
+      <div class="filters">
+        <div>
+          <label>Power Exchange</label>
+          <select id="exchangeSelect">
+            <option>IEX</option>
+            <option>PXIL</option>
+            <option>HPX</option>
+          </select>
+        </div>
+        <div>
+          <label>Market Segment</label>
+          <select id="segmentSelect">
+            <option>DAM</option>
+            <option>GDAM</option>
+            <option>RTM</option>
+          </select>
+        </div>
+        <div>
+          <label>Start Date</label>
+          <input type="date" id="startDate" value="2024-09-10"/>
+        </div>
+        <div>
+          <label>End Date</label>
+          <input type="date" id="endDate" value="2024-09-12"/>
+        </div>
+      </div>
+
+      <!-- Multi-select -->
+      <div>
+        <label>Display Columns</label>
+        <div class="multi-select" id="columnSelect">
+          <div class="multi-select-display" id="columnDisplay">
+            <span class="placeholder">Select columns...</span>
+          </div>
+          <div class="multi-select-options" id="columnOptions">
+            <label><input type="checkbox" value="Purchase Bid (MW)"> Purchase Bid (MW)</label>
+            <label><input type="checkbox" value="Sell Bid (MW)"> Sell Bid (MW)</label>
+            <label><input type="checkbox" value="MCV (MW)"> MCV (MW)</label>
+            <label><input type="checkbox" value="Final Scheduled Volume (MW)"> Final Scheduled Volume (MW)</label>
+            <label><input type="checkbox" value="MCP (Rs/MWh)"> MCP (Rs/MWh)</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="card">
+      <div style="font-size:13px; margin-bottom:10px;">
+        <span>Exchange: <strong id="summaryExchange">IEX</strong></span> | 
+        <span>Segment: <strong id="summarySegment">DAM</strong></span> | 
+        <span>Date Range: <strong id="summaryDates">10/09/2024 to 12/09/2024</strong></span>
+      </div>
+      
+      <div style="overflow-x:auto; max-height: 500px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 6px;">
+        <table id="dataTable">
+          <thead style="position: sticky; top: 0; background: #f9fafb; z-index: 5;">
+            <tr>
+              <th>Time Block</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      
+      <div class="table-footer">
+        <div class="pagination">
+          <button class="btn" id="prevPageBtn" style="visibility: hidden;">← Previous</button>
+          <span id="pageInfo">Page 1 of 1 (10/09/2024)</span>
+          <button class="btn" id="nextPageBtn" style="visibility: hidden;">Next →</button>
+        </div>
+        <div>
+          <span id="tableInfo">Showing 96 time blocks</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const timeBlocks = Array.from({ length: 96 }, (_, i) => {
+      const hour = Math.floor(i / 4);
+      const minute = (i % 4) * 15;
+      return `${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`;
+    });
+
+    const generateSampleData = (timeBlock) => ({
+      "timeBlock": timeBlock,
+      "Purchase Bid (MW)": Math.floor(Math.random() * 1000) + 500,
+      "Sell Bid (MW)": Math.floor(Math.random() * 1000) + 400,
+      "MCV (MW)": Math.floor(Math.random() * 800) + 300,
+      "Final Scheduled Volume (MW)": Math.floor(Math.random() * 600) + 200,
+      "MCP (Rs/MWh)": (Math.random() * 5 + 3).toFixed(2),
+    });
+
+    const columnSelect = document.getElementById("columnSelect");
+    const columnDisplay = document.getElementById("columnDisplay");
+    const columnOptions = document.getElementById("columnOptions");
+    const dataTable = document.getElementById("dataTable");
+    const tableBody = dataTable.querySelector("tbody");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const prevPageBtn = document.getElementById("prevPageBtn");
+    const nextPageBtn = document.getElementById("nextPageBtn");
+    const pageInfo = document.getElementById("pageInfo");
+    const tableInfo = document.getElementById("tableInfo");
+
+    let selectedColumns = [];
+    let currentPageIndex = 0;
+    let dateRange = [];
+
+    // Toggle dropdown
+    columnDisplay.addEventListener("click", () => {
+      columnOptions.style.display =
+        columnOptions.style.display === "block" ? "none" : "block";
+    });
+
+    // Handle selection
+    columnOptions.querySelectorAll("input").forEach((checkbox) => {
+      checkbox.addEventListener("change", (e) => {
+        const value = e.target.value;
+        if (e.target.checked) {
+          selectedColumns.push(value);
+        } else {
+          selectedColumns = selectedColumns.filter((col) => col !== value);
+        }
+        updateColumnDisplay();
+        renderTable();
+      });
+    });
+
+    // Update tag display
+    function updateColumnDisplay() {
+      columnDisplay.innerHTML = "";
+      if (selectedColumns.length === 0) {
+        columnDisplay.innerHTML = '<span class="placeholder">Select columns...</span>';
+      } else {
+        selectedColumns.forEach((col) => {
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = col;
+          const btn = document.createElement("button");
+          btn.textContent = "×";
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            selectedColumns = selectedColumns.filter((c) => c !== col);
+            columnOptions.querySelector(`input[value="${col}"]`).checked = false;
+            updateColumnDisplay();
+            renderTable();
+          };
+          tag.appendChild(btn);
+          columnDisplay.appendChild(tag);
+        });
+      }
+    }
+
+    // Generate date range
+    function generateDateRange(startDate, endDate) {
+      const dates = [];
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dates.push(new Date(d).toISOString().split('T')[0]);
+      }
+      return dates;
+    }
+
+    function formatDateDisplay(isoDate) {
+      const [year, month, day] = isoDate.split("-");
+      return `${day}/${month}/${year}`;
+    }
+
+    // Update date range when filters change
+    function updateDateRange() {
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      dateRange = generateDateRange(startDate, endDate);
+      currentPageIndex = 0;
+      updatePaginationControls();
+      renderTable();
+    }
+
+    // Update pagination controls
+    function updatePaginationControls() {
+      const totalPages = dateRange.length;
+      const currentDate = dateRange[currentPageIndex];
+      
+      pageInfo.textContent = `Page ${currentPageIndex + 1} of ${totalPages} (${formatDateDisplay(currentDate)})`;
+      
+      prevPageBtn.style.visibility = currentPageIndex > 0 ? "visible" : "hidden";
+      nextPageBtn.style.visibility = currentPageIndex < totalPages - 1 ? "visible" : "hidden";
+    }
+
+    // Render table headers & rows
+    function renderTable() {
+      const theadRow = dataTable.querySelector("thead tr");
+      theadRow.innerHTML = "<th>Time Block</th>";
+      selectedColumns.forEach((col) => {
+        const th = document.createElement("th");
+        th.textContent = col;
+        theadRow.appendChild(th);
+      });
+
+      tableBody.innerHTML = "";
+      
+      timeBlocks.forEach((tb) => {
+        const data = generateSampleData(tb);
+        const tr = document.createElement("tr");
+        const tdTime = document.createElement("td");
+        tdTime.textContent = tb;
+        tr.appendChild(tdTime);
+
+        selectedColumns.forEach((col) => {
+          const td = document.createElement("td");
+          td.textContent = col.includes("Rs/MWh") ? `₹${data[col]}` : data[col];
+          tr.appendChild(td);
+        });
+        tableBody.appendChild(tr);
+      });
+      
+      tableInfo.textContent = `Showing 96 time blocks`;
+    }
+
+    // Pagination event handlers
+    prevPageBtn.addEventListener("click", () => {
+      if (currentPageIndex > 0) {
+        currentPageIndex--;
+        updatePaginationControls();
+        renderTable();
+      }
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+      if (currentPageIndex < dateRange.length - 1) {
+        currentPageIndex++;
+        updatePaginationControls();
+        renderTable();
+      }
+    });
+
+    // Download CSV functionality
+    downloadBtn.addEventListener("click", downloadCSV);
+
+    function downloadCSV() {
+      const exchange = document.getElementById("exchangeSelect").value;
+      const segment = document.getElementById("segmentSelect").value;
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      
+      let csvContent = "Date,Time Block";
+      selectedColumns.forEach(col => {
+        csvContent += "," + col;
+      });
+      csvContent += "\n";
+      
+      dateRange.forEach(date => {
+        timeBlocks.forEach(timeBlock => {
+          const data = generateSampleData(timeBlock);
+          csvContent += formatDateDisplay(date) + "," + timeBlock;
+          selectedColumns.forEach(col => {
+            csvContent += "," + data[col];
+          });
+          csvContent += "\n";
+        });
+      });
+      
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", `${exchange}_${segment}_${formatDateDisplay(startDate)}_to_${formatDateDisplay(endDate)}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Update summary on filter change
+    document.getElementById("exchangeSelect").addEventListener("change", (e) => {
+      document.getElementById("summaryExchange").textContent = e.target.value;
+    });
+    document.getElementById("segmentSelect").addEventListener("change", (e) => {
+      document.getElementById("summarySegment").textContent = e.target.value;
+    });
+    document.getElementById("startDate").addEventListener("change", () => {
+      updateSummaryDates();
+      updateDateRange();
+    });
+    document.getElementById("endDate").addEventListener("change", () => {
+      updateSummaryDates();
+      updateDateRange();
+    });
+
+    function updateSummaryDates() {
+      const start = document.getElementById("startDate").value;
+      const end = document.getElementById("endDate").value;
+      document.getElementById("summaryDates").textContent = `${formatDateDisplay(start)} to ${formatDateDisplay(end)}`;
+    }
+
+    // Init
+    updateDateRange();
+    renderTable();
+  </script>
+</body>
+</html>
